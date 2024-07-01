@@ -7,9 +7,9 @@ import { ColumnGroup } from 'primereact/columngroup'
 import { Row } from 'primereact/row'
 import { Button } from 'primereact/button'
 import { Dropdown } from 'primereact/dropdown'
+import { Message } from 'primereact/message'
 
 import './App.css'
-import { Message } from 'primereact/message'
 
 const currencies = [
   {
@@ -34,6 +34,7 @@ function App() {
   )
 
   const [currency, setCurrency] = useState(currencies[0])
+  const [cash, setCash] = useState(0)
 
   const priceFormat = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -112,9 +113,12 @@ function App() {
     )
   }, [rows])
 
-  const computed = useMemo(() => {
-    const totalMarketValue = rows.reduce((acc, row) => acc + row.marketValue, 0)
+  const totalMarketValue = useMemo(
+    () => rows.reduce((acc, row) => acc + row.marketValue, cash),
+    [rows, cash]
+  )
 
+  const computed = useMemo(() => {
     const computedRows = rows.map(row => {
       const currentAllocation = totalMarketValue
         ? (row.marketValue / totalMarketValue) * 100
@@ -142,7 +146,7 @@ function App() {
       ...row,
       buyOnly: row.buySell + row.targetAllocation * adjustment,
     }))
-  }, [rows])
+  }, [rows, totalMarketValue])
 
   useEffect(() => {
     localStorage.setItem('rows', JSON.stringify(rows))
@@ -248,6 +252,14 @@ function App() {
           options={currencies}
           optionLabel="name"
         />
+        <InputNumber
+          suffix=" (Cash)"
+          value={cash}
+          placeholder="Cash"
+          onValueChange={e => setCash(e.value)}
+          mode="currency"
+          currency={currency.name}
+        ></InputNumber>
       </div>
       {!okTotalTargetAllocation && (
         <Message severity="warn" text="Allocation 100% required" />
