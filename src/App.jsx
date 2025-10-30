@@ -26,7 +26,7 @@ const currencies = [
   },
 ]
 
-function App() {
+export default function App() {
   const tableRef = useRef()
 
   const [rows, setRows] = useState(
@@ -144,6 +144,7 @@ function App() {
 
     return computedRows.map(row => ({
       ...row,
+      difference: row.currentAllocation - row.targetAllocation,
       buyOnly: row.buySell + row.targetAllocation * adjustment,
     }))
   }, [rows, totalMarketValue])
@@ -179,7 +180,16 @@ function App() {
               0
             ) / 100
           )}
+          footerClassName={
+            computed.reduce(
+              (acc, row) => acc + (row.targetAllocation ?? 0),
+              0
+            ) !== 100
+              ? 'text-red-500'
+              : ''
+          }
         />
+        <Column />
         <Column
           align={'right'}
           footer={priceFormat.format(
@@ -307,6 +317,15 @@ function App() {
           editor={cellEditor}
         />
         <Column
+          field="difference"
+          header="Difference"
+          align={'right'}
+          body={percentageDisplay('difference')}
+          bodyClassName={data =>
+            data.difference < 0 ? 'text-red-500' : 'text-green-500'
+          }
+        />
+        <Column
           field="buySell"
           header="Buy/sell"
           align={'right'}
@@ -344,5 +363,3 @@ function App() {
     </div>
   )
 }
-
-export default App
