@@ -13,12 +13,12 @@ import './App.css'
 
 const currencies = [
   {
-    name: 'USD',
-    symbol: '$',
-  },
-  {
     name: 'EUR',
     symbol: '€',
+  },
+  {
+    name: 'USD',
+    symbol: '$',
   },
   {
     name: 'GBP',
@@ -30,7 +30,7 @@ export default function App() {
   const tableRef = useRef()
 
   const [rows, setRows] = useState(
-    JSON.parse(localStorage.getItem('rows')) || []
+    JSON.parse(localStorage.getItem('rows')) || [],
   )
 
   const [currency, setCurrency] = useState(currencies[0])
@@ -115,7 +115,7 @@ export default function App() {
 
   const totalMarketValue = useMemo(
     () => rows.reduce((acc, row) => acc + row.marketValue, cash),
-    [rows, cash]
+    [rows, cash],
   )
 
   const computed = useMemo(() => {
@@ -137,17 +137,28 @@ export default function App() {
       ...computedRows
         .filter(d => d.buySell < 0)
         .map(d =>
-          d.targetAllocation ? Math.abs(d.buySell / d.targetAllocation) : 0
+          d.targetAllocation ? Math.abs(d.buySell / d.targetAllocation) : 0,
         ),
-      0
+      0,
     )
 
-    return computedRows.map(row => ({
+    const withBuyOnly = computedRows.map(row => ({
       ...row,
       difference: row.currentAllocation - row.targetAllocation,
       buyOnly: row.buySell + row.targetAllocation * adjustment,
     }))
-  }, [rows, totalMarketValue])
+
+    const totalBuyOnly = withBuyOnly.reduce(
+      (acc, row) => acc + Math.max(row.buyOnly, 0),
+      0,
+    )
+    const cashRatio = totalBuyOnly > 0 ? Math.min(1, cash / totalBuyOnly) : 0
+
+    return withBuyOnly.map(row => ({
+      ...row,
+      cashBuyOnly: Math.max(row.buyOnly, 0) * cashRatio,
+    }))
+  }, [rows, totalMarketValue, cash])
 
   useEffect(() => {
     localStorage.setItem('rows', JSON.stringify(rows))
@@ -160,7 +171,7 @@ export default function App() {
         <Column
           align={'right'}
           footer={priceFormat.format(
-            computed.reduce((acc, row) => acc + (row.marketValue ?? 0), 0)
+            computed.reduce((acc, row) => acc + (row.marketValue ?? 0), 0),
           )}
         />
         <Column
@@ -168,8 +179,8 @@ export default function App() {
           footer={percentageFormat.format(
             computed.reduce(
               (acc, row) => acc + (row.currentAllocation ?? 0),
-              0
-            ) / 100
+              0,
+            ) / 100,
           )}
         />
         <Column
@@ -177,15 +188,15 @@ export default function App() {
           footer={percentageFormat.format(
             computed.reduce(
               (acc, row) => acc + (row.targetAllocation ?? 0),
-              0
-            ) / 100
+              0,
+            ) / 100,
           )}
           footerClassName={
             computed.reduce(
               (acc, row) => acc + (row.targetAllocation ?? 0),
-              0
+              0,
             ) !== 100
-              ? 'text-red-500'
+              ? 'color-negative'
               : ''
           }
         />
@@ -193,13 +204,19 @@ export default function App() {
         <Column
           align={'right'}
           footer={priceFormat.format(
-            computed.reduce((acc, row) => acc + (row.buySell ?? 0), 0)
+            computed.reduce((acc, row) => acc + (row.buySell ?? 0), 0),
           )}
         />
         <Column
           align={'right'}
           footer={priceFormat.format(
-            computed.reduce((acc, row) => acc + (row.buyOnly ?? 0), 0)
+            computed.reduce((acc, row) => acc + (row.buyOnly ?? 0), 0),
+          )}
+        />
+        <Column
+          align={'right'}
+          footer={priceFormat.format(
+            computed.reduce((acc, row) => acc + (row.cashBuyOnly ?? 0), 0),
           )}
         />
         <Column />
@@ -235,7 +252,7 @@ export default function App() {
           targetAllocation: 0,
         },
       ]),
-    []
+    [],
   )
 
   const header = (
@@ -280,6 +297,7 @@ export default function App() {
   return (
     <div>
       <DataTable
+        key={currency.name}
         ref={tableRef}
         header={header}
         stripedRows
@@ -322,7 +340,7 @@ export default function App() {
           align={'right'}
           body={percentageDisplay('difference')}
           bodyClassName={data =>
-            data.difference < 0 ? 'text-red-500' : 'text-green-500'
+            data.difference < 0 ? 'color-negative' : 'color-positive'
           }
         />
         <Column
@@ -331,7 +349,7 @@ export default function App() {
           align={'right'}
           body={priceDisplay('buySell')}
           bodyClassName={data =>
-            data.buySell < 0 ? 'text-red-500' : 'text-green-500'
+            data.buySell < 0 ? 'color-negative' : 'color-positive'
           }
         />
         <Column
@@ -339,7 +357,14 @@ export default function App() {
           header="Buy only"
           align={'right'}
           body={priceDisplay('buyOnly')}
-          bodyClassName={data => data.buyOnly > 0 && 'text-green-500'}
+          bodyClassName={data => data.buyOnly > 0 && 'color-positive'}
+        />
+        <Column
+          field="cashBuyOnly"
+          header="Buy (cash)"
+          align={'right'}
+          body={priceDisplay('cashBuyOnly')}
+          bodyClassName={data => data.cashBuyOnly > 0 && 'color-positive'}
         />
         <Column
           rowEditor
